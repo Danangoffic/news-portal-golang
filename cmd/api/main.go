@@ -1,13 +1,15 @@
 package main
 
 import (
-	"net/http"
-
 	"log"
+	"net/http"
+	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/labstack/echo-contrib/jaegertracing"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"golang.org/x/net/http2"
 
 	"news-portal/internal/database"
 	"news-portal/internal/handlers"
@@ -22,25 +24,39 @@ func main() {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
-	// dsn := os.Getenv("DB_USER") + ":" + os.Getenv("DB_PASSWORD") + "@tcp(" + os.Getenv("DB_HOST") + ":" + os.Getenv("DB_PORT") + ")/" + os.Getenv("DB_NAME") + "?charset=utf8mb4&parseTime=True&loc=Local"
-	// db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	// if err != nil {
-	// 	panic("failed to connect database")
-	// }
 	database.ConnectDB()
+	_, err = database.GetDB()
+	if err != nil {
+		log.Fatal("Could not connect to the database:", err)
+	}
 
-	// database.DB = db
-	database.DB.AutoMigrate(&category.Category{}, &article.Article{})
+	// Migrasi database
+	DB := database.DB
+	err = DB.AutoMigrate(&category.Category{}, &article.Article{})
+	if err != nil {
+		log.Fatal("Failed to migrate database:", err)
+	}
 
-	articleRepository := repositories.NewArticleRepository(database.DB)
+	articleRepository := repositories.NewArticleRepository(DB)
+	categoryRepository := repositories.NewCategoryRepository(DB)
 	articleService := services.NewArticleService(articleRepository)
+	categoryService := services.NewCategoryService(*categoryRepository)
 	articleHandler := handlers.NewArticleHandler(articleService)
+	categoryHandler := handlers.NewCategoryHandler(*categoryService)
 
 	e := echo.New()
+	s := &http2.Server{
+		MaxConcurrentStreams: 250,
+		MaxReadFrameSize:     1048576,
+		IdleTimeout:          10 * time.Second,
+	}
 
 	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(middleware.CSRF())
+	c := jaegertracing.New(e, nil)
+	defer c.Close()
 
 	// Routes
 	e.GET("/", func(c echo.Context) error {
@@ -48,9 +64,24 @@ func main() {
 	})
 
 	// Article routes
-	articles := e.Group("/articles")
-	articles.GET("", articleHandler.GetArticle)
+	// articleRoutes := e.Group("/api/articles")
+	e.GET("/api/articles", articleHandler.GetAllArticles)
+	e.GET("/api/articles/:slug", articleHandler.GetArticleBySlug)
+	e.GET("/api/articles/:id/detail", articleHandler.GetArticleById)
+	e.GET("/api/articles/status/:status", articleHandler.GetArticlesByStatus)
+	e.POST("/api/articles/", articleHandler.CreateArticle)
+	e.PUT("/api/articles/:id", articleHandler.UpdateArticle)
+	e.DELETE("/api/articles/:id", articleHandler.DeleteArticle)
+
+	// categoryRoutes := e.Group("/api/categories")
+	e.GET("/api/categories/", categoryHandler.GetCategories)
+	e.GET("/api/categories/:id", categoryHandler.GetCategory)
+	e.POST("/api/categories/", categoryHandler.CreateCategory)
+	e.PUT("/api/categories/:id", categoryHandler.UpdateCategory)
+	e.DELETE("/api/categories/:id", categoryHandler.DeleteCategory)
 
 	// Start server
-	e.Logger.Fatal(e.Start(":8080"))
+	if err := e.StartH2CServer(":8080", s); err != http.ErrServerClosed {
+		log.Fatal(err)
+	}
 }

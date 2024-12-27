@@ -12,7 +12,7 @@ type ArticleRepository interface {
 	GetArticlesByStatus(status string) ([]model.Article, error)
 	GetArticleBySlug(slug string) (*model.Article, error)
 	CreateArticle(article *model.Article) error
-	UpdateArticle(article *model.Article) error
+	UpdateArticle(article model.Article) error
 	DeleteArticle(article *model.Article) error
 }
 
@@ -63,7 +63,7 @@ func (r *articleRepository) CreateArticle(article *model.Article) error {
 	return nil
 }
 
-func (r *articleRepository) UpdateArticle(article *model.Article) error {
+func (r *articleRepository) UpdateArticle(article model.Article) error {
 	if err := r.db.Save(article).Error; err != nil {
 		return err
 	}

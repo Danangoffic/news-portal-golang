@@ -4,6 +4,7 @@ import (
 	model "news-portal/internal/models/article"
 	"news-portal/internal/repositories"
 	"news-portal/internal/utils"
+	"time"
 )
 
 type ArticleService interface {
@@ -12,7 +13,7 @@ type ArticleService interface {
 	GetArticlesByStatus(status string) ([]model.Article, error)
 	GetArticleBySlug(slug string) (*model.Article, error)
 	CreateArticle(article *model.Article) error
-	UpdateArticle(article *model.Article) error
+	UpdateArticle(ID int, article model.Article) error
 	DeleteArticle(article *model.Article) error
 }
 
@@ -42,11 +43,13 @@ func (s *articleService) GetArticleBySlug(slug string) (*model.Article, error) {
 func (s *articleService) CreateArticle(article *model.Article) error {
 	article.Slug = utils.Slugify(article.Title)
 	article.Status = model.Draft
-
+	article.CreatedAt = time.Now()
 	return s.repo.CreateArticle(article)
 }
 
-func (s *articleService) UpdateArticle(article *model.Article) error {
+func (s *articleService) UpdateArticle(ID int, article model.Article) error {
+	article.Slug = utils.Slugify(article.Title)
+	article.UpdatedAt = time.Now()
 	return s.repo.UpdateArticle(article)
 }
 

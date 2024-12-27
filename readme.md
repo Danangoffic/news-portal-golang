@@ -15,7 +15,7 @@ Follow these instructions to set up and run the project on your local machine.
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/yourusername/news-portal.git
+    git clone https://github.com/Danangoffic/news-portal-golang.git
     cd news-portal
     ```
 

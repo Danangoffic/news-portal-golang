@@ -75,11 +75,17 @@ func (h *ArticleHandler) GetArticleBySlug(c echo.Context) error {
 func (h *ArticleHandler) CreateArticle(c echo.Context) error {
 	lock.Lock()
 	defer lock.Unlock()
-	var article article.Article
-	if err := c.Bind(&article); err != nil {
+	var createArticleData article.CreateArticle
+	if err := c.Bind(&createArticleData); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]any{"error": "Invalid request payload", "status": "failed"})
 	}
-
+	article := article.Article{
+		Title:      createArticleData.Title,
+		Content:    createArticleData.Content,
+		Author:     createArticleData.Author,
+		Status:     article.ArticleStatus(createArticleData.Status),
+		CategoryID: createArticleData.CategoryID,
+	}
 	err := h.service.CreateArticle(&article)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "status": "failed"})

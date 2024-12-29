@@ -65,7 +65,8 @@ func (s *CategoryService) UpdateCategory(id uint, data category.Category) (*mode
 	if err != nil {
 		return nil, err
 	}
-	category.Slug = utils.Slugify(category.Name)
+	category.Name = data.Name
+	category.Slug = utils.Slugify(data.Name)
 	category.UpdatedAt = time.Now()
 	err = s.repository.Update(category)
 	if err != nil {

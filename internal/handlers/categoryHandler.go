@@ -47,11 +47,12 @@ func (h *CategoryHandler) GetCategory(c echo.Context) error {
 }
 
 func (h *CategoryHandler) CreateCategory(c echo.Context) error {
-	var category category.Category
-	if err := c.Bind(&category); err != nil {
+	var createCategoryData category.CreateCategory
+	if err := c.Bind(&createCategoryData); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 
 	}
+	category := category.Category{Name: createCategoryData.Name}
 	if _, err := h.Service.CreateCategory(category); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 
@@ -62,8 +63,8 @@ func (h *CategoryHandler) CreateCategory(c echo.Context) error {
 func (h *CategoryHandler) UpdateCategory(c echo.Context) error {
 	id := c.Param("id")
 	log.Println("update category with id : ", id)
-	var category category.Category
-	if err := c.Bind(&category); err != nil {
+	var updateCategoryData category.UpdateCategory
+	if err := c.Bind(&updateCategoryData); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 
 	}
@@ -72,11 +73,12 @@ func (h *CategoryHandler) UpdateCategory(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]any{"error": "Invalid ID"})
 
 	}
+	category := category.Category{Name: updateCategoryData.Name}
 	if _, err := h.Service.UpdateCategory(uint(uintID), category); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 
 	}
-	return c.NoContent(http.StatusOK)
+	return c.JSON(http.StatusOK, map[string]any{"status": "success", "data": category})
 }
 
 func (h *CategoryHandler) DeleteCategory(c echo.Context) error {
